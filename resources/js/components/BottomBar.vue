@@ -8,7 +8,7 @@
                 <router-link to="/calculate" class="col d-flex text-decoration-none flex-column align-items-center" :class="$route.path == '/calculate' ? 'text-primary' : 'text-secondary'">
                     <span class="fas fa-calculator fa-md mb-3"></span>
                 </router-link>
-                <router-link to="/" class="col d-flex text-decoration-none flex-column align-items-center" :class="$route.path == '/progress' ? 'text-primary' : 'text-secondary'">
+                <router-link to="/history" class="col d-flex text-decoration-none flex-column align-items-center" :class="$route.path == '/history' ? 'text-primary' : 'text-secondary'">
                     <span class="fas fa-chart-line fa-md mb-3"></span>
                 </router-link>
                 <router-link to="/profile" class="col d-flex text-decoration-none flex-column align-items-center" :class="$route.path == '/profile' ? 'text-primary' : 'text-secondary'">
