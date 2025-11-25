@@ -18,25 +18,19 @@ class OpenrouterController extends Controller
             'tb' => 'required',
         ]);
 
-        // Prompt yang akan diberikan kepada Model
+        $umur = $request->age * 12;
+
+        if($umur <= 59){
+            $tbu = $request->tb / $request->age;
+            $bbu = $request->bb / $request->age;
+            $imt = $request->bb / ($request->tb * $request->tb);
+        }else{
+            $tbu = $request->tb / $request->age;
+            $imt = $request->bb / ($request->tb * $request->tb);
+        }
+
         $prompt = "
-            Kamu adalah seorang ahli gizi WHO yang menghitung status gizi anak menggunakan Standar WHO 2006 (Growth Standard).
-
-            Gunakan aturan berikut untuk memilih indikator:
-            - Jika tujuan adalah menilai stunting: gunakan TB/U (Tinggi Badan menurut Umur)
-            - Jika menilai gizi kurang / gizi buruk: gunakan BB/U (Berat Badan menurut Umur)
-            - Jika menilai wasting / kurus / sangat kurus: gunakan BB/TB (Berat Badan menurut Tinggi Badan)
-            - Jika umur ≥ 60 bulan: gunakan IMT/U (BMI-for-age)
-
-            Selalu gunakan umur dalam bulan. Jika input masih dalam tahun, konversi otomatis menjadi bulan.
-
-            Gunakan rumus WHO LMS:
-            z = ((nilai/M)^L - 1) / (L × S)
-
-            Gunakan tabel referensi WHO 2006 berdasarkan:
-            - Jenis kelamin,
-            - Umur (bulan),
-            - Tinggi badan atau berat badan yang relevan.
+            Anda adalah seorang ahli gizi WHO yang menghitung status gizi anak menggunakan Standar WHO 2006 (Growth Standard).
 
             Data anak:
             - Jenis kelamin: $request->gender
@@ -44,39 +38,41 @@ class OpenrouterController extends Controller
             - Berat badan: $request->bb kg
             - Tinggi badan: $request->tb cm
 
-            Tugas:
-            1. Tentukan indikator yang benar sesuai ketentuan di atas.
-            2. Hitung 1 jenis Z-Score yang paling relevan (jangan lebih dari satu).
-            3. Tentukan kategori status gizi berdasarkan nilai Z-score:
-            - Stunting: TB/U < -2 SD
-            - Severe stunting: TB/U < -3 SD
-            - Underweight: BB/U < -2 SD
-            - Wasting: BB/TB < -2 SD
-            - Severe wasting: BB/TB < -3 SD
-            - Obesitas: IMT/U > +2 SD
-            - Normal: -2 SD sampai +2 SD
-            4. Buat penjelasan singkat (HTML allowed: <b>, <i>, <ul>, <li>).
-            5. Buat rekomendasi singkat dalam HTML.
-            6. Gaya penulisan penjelasan dan rekomendasi harus menarik, interaktif, dan boleh memakai emoji.
-
-            Format output HARUS JSON, tanpa backtick, tanpa teks tambahan:
-
-            {
-            \"z_score\": \"\",
-            \"kategori\": \"\",
-            \"status\": \"\",
-            \"penjelasan\": \"\",
-            \"rekomendasi\": \"\"
+            Hasil perhitungan:
+            - TB/Umur: $tbu
+            - BB/Umur: $bbu
+            - IMT: $imt
+            
+            Tugas Anda:
+            1. Tentukan indikator yang paling relevan berdasarkan umur anak:
+                - Jika umur < 60 bulan: gunakan TB/U, BB/U, atau BB/TB sesuai tujuan.
+                - Jika umur ≥ 60 bulan: gunakan IMT/U.
+            2. Gunakan nilai rasio yang sudah dihitung di atas sebagai data dasar (tidak perlu menghitung ulang).
+            3. Tentukan Z-score (boleh estimasi, karena data referensi tidak diberikan).
+            4. Tentukan status gizi:
+                - Stunting: TB/U < -2 SD
+                - Underweight: BB/U < -2 SD
+                - Wasting: BB/TB < -2 SD
+                - Severe (< -3 SD)
+                - Normal: -2 s/d +2 SD
+                - Obesitas (IMT/U > +2 SD)
+            5. Buat penjelasan singkat (boleh pakai <b>, <i>, <ul>, <li> dan emoji).
+            6. Buat rekomendasi singkat dalam HTML.
+            Format output HARUS JSON, tanpa backtick, tanpa teks tambahan: 
+            { 
+                \"z_score\": \"\",
+                \"kategori\": \"\",
+                \"status\": \"\",
+                \"penjelasan\": \"\",
+                \"rekomendasi\": \"\" 
             }
-
-            Jika suatu data tidak dapat dihitung (contoh: umur tidak valid), berikan JSON dengan pesan error dalam field penjelasan.
         ";
 
         $response = Http::withHeaders([
             "Authorization" => "Bearer ".env("OPENROUTER_API_KEY"),
             "HTTP-Referer" => url('/'),
         ])->post(env("OPENROUTER_BASE_URL"), [
-            "model" => "google/gemma-3-27b-it",
+            "model" => "openai/gpt-oss-20b:free",
             "messages" => [
                 [
                     "role" => "user",
@@ -85,7 +81,6 @@ class OpenrouterController extends Controller
             ],
         ]);
 
-        
         $content = $response->json()['choices'][0]['message']['content'];
         $content = str_replace(["```json", "```"],"",$content);
         $data = json_decode($content, true);
@@ -108,6 +103,18 @@ class OpenrouterController extends Controller
             'penjelasan' => $data['penjelasan'],
             'rekomendasi' => $data['rekomendasi'],
         ]);
+
+        return response()->json($data);
+    }
+
+    public function rekomendasiGizi()
+    {
+        $data = \DB::table('kalkulasi_heads')
+            ->join('kalkulasi_details', 'kalkulasi_heads.id', '=', 'kalkulasi_details.kalkulasi_id')
+            ->where('kalkulasi_heads.user_id', auth()->user()->id)
+            ->select('kalkulasi_details.rekomendasi')
+            ->orderBy('kalkulasi_heads.id', 'desc')
+            ->first();
 
         return response()->json($data);
     }

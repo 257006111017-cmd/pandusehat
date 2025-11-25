@@ -11,7 +11,11 @@ export default defineConfig({
         }),
         vue(),
         VitePWA({
-            registerType: 'auto',
+            registerType: 'autoUpdate',
+            devOptions: {
+                enabled: true, // <<== INI AGAR PWA JALAN SAAT DEV
+                type: 'module',
+            },
             manifest: {
                 name: 'Pandu Sehat',
                 short_name: 'Pandu Sehat',

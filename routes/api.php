@@ -3,6 +3,7 @@
 use App\Http\Controllers\OpenrouterController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -28,5 +29,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/analyze', [OpenrouterController::class, 'analisisGizi']);
     Route::post('/logout', [LoginController::class, 'logout']);
     Route::get('/progress', [ProgressController::class, 'index']);
+    Route::get('/rekomendasi', [OpenrouterController::class, 'rekomendasiGizi']);
     Route::get('/progress/detail/{id}', [ProgressController::class, 'show']);
+    Route::post('/profile/{id}', [ProfileController::class, 'update']);
 });
